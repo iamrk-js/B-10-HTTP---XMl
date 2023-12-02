@@ -18,59 +18,27 @@ let postsArray = [];
 // PUT/PATCH >> UPDATE
 // DELETE  >> DELETE
 
+
 const onEdit = (ele) => {
-    cl(ele)
-    let getId = ele.closest(".card").id;
-    cl(getId);
-    localStorage.setItem("editId", getId);
-    // `${baseUrl}/posts/:id`
-    let getObjUrl = `${baseUrl}/posts/${getId}`;
+    // cl(ele.closest(".card").id)
+    let getEditId = ele.closest(".card").id;
+    cl(getEditId)
+    localStorage.setItem("getEditId", getEditId);
+    let editUrl = `${baseUrl}/posts/${getEditId}`;
 
-    let xhr = new XMLHttpRequest();
-
-    xhr.open("GET", getObjUrl, true);
-
-    xhr.send();
-
-    xhr.onload = function () {
-        if (xhr.status === 200) {
-            cl(xhr.response);
-            let getObj = JSON.parse(xhr.response);
-            titleControl.value = getObj.title;
-            bodyControl.value = getObj.body;
-            userIdControl.value = getObj.userId;
-            updateBtn.classList.remove('d-none');
-            submitBtn.classList.add('d-none');
-        }
-    }
-
+    makeApiCall("GET", editUrl);
 }
+
 
 const onDelete = (ele) => {
     cl(ele)
-    let getDeleteId = ele.closest('.card').id;
-    cl(getDeleteId);
+    let deleteId = ele.closest(".card").id;
+    let deleteUrl = `${baseUrl}/posts/${deleteId}`;
 
-    let deleteUrl = `${baseUrl}/posts/${getDeleteId}`;
-
-    let xhr = new XMLHttpRequest();
-
-    xhr.open("DELETE", deleteUrl);
-
-    xhr.send();
-
-    xhr.onload = function () {
-        if (xhr.status === 200) {
-            cl(xhr.response)
-
-            let card = document.getElementById(getDeleteId);
-            cl(card);
-            card.remove()
-        }
-    }
+    makeApiCall("DELETE", deleteUrl)
 }
 
-const templating = (arr) => {
+const templatingOfPosts = (arr) => {
     let result = ``;
     arr.forEach(post => {
         result += `
@@ -127,95 +95,76 @@ const createCards = (postObj) => {
     cl(card)
 }
 
-const createPost = (postObj) => {
+const makeApiCall = (methodName, apiUrl, bodyMsg = null) => {
     let xhr = new XMLHttpRequest();
-
-    xhr.open("POST", postsUrl, true);
-
-    xhr.send(JSON.stringify(postObj));
-
+    // xhr.open("GET", postsUrl);
+    xhr.open(methodName, apiUrl);
+    xhr.send(JSON.stringify(bodyMsg)); //  we send data to DB
     xhr.onload = function () {
-        if (xhr.status === 200 || xhr.status === 201) { // 2xx
-            cl(xhr.response) // "{"id" : 101}" 
-            postObj.id = JSON.parse(xhr.response).id;
-            postsArray.push(postObj);
-           // templating(postsArray); // 100 obj + 1 obj
-           createCards(postObj)
+        if (xhr.status >= 200 || xhr.status <= 299 && xhr.readyState === 4) { // 2xx
+            cl(xhr.response)
+            // templating
+            if (methodName === "GET") {
+                // here data may be Array or it may be Object
+                let data = JSON.parse(xhr.response);
+                if (Array.isArray(data)) {
+                    templatingOfPosts(data);
+                } else {
+                    // we will patch data in form
+                    // cl(data)
+                    updateBtn.classList.remove('d-none');
+                    submitBtn.classList.add('d-none');
+                    titleControl.value = data.title;
+                    bodyControl.value = data.body;
+                    userIdControl.value = data.userId;
+                }
+            }else if(methodName === "PUT"){
+                cl(xhr.response)
+                let id = JSON.parse(xhr.response).id;
+                let card = document.getElementById(id);
+                cl(card)
+                let cardChild = [...card.children]
+                cardChild[0].innerHTML = `<h2>${bodyMsg.title}</h2>`
+                cardChild[1].innerHTML = `<p>${bodyMsg.body}</p>`
+                // cl(cardChild[0])
+                // cl(cardChild[1])
+                postForm.reset();
+                updateBtn.classList.add('d-none');
+                submitBtn.classList.remove('d-none');
+            }else if(methodName === "DELETE"){
+                let getIndex = apiUrl.indexOf('posts/')
+                let id = apiUrl.slice(getIndex + 6);
+                cl(id)
+                document.getElementById(id).remove()
+            }
         }
     }
 }
 
-const onSubmitPost = (eve) => {
-    eve.preventDefault();
-    let newPost = {
-        title: titleControl.value,
-        body: bodyControl.value,
-        userId: userIdControl.value
-    }
-    cl(newPost);
-    postForm.reset();
-    createPost(newPost) // API call to create a new PostObj
-
-}
-
-const getAllPosts = () => {
-    // 1 create a instance/object XMLHttpRequest
-    let xhr = new XMLHttpRequest();
-    // 2 Configration
-    xhr.open("GET", postsUrl, true);
-    xhr.send();
-    xhr.onload = function () {
-        if (xhr.status === 200) {
-            // cl(xhr.response)
-            postsArray = JSON.parse(xhr.response);
-            // cl(data)
-            templating(postsArray);
-        } else {
-            alert(`Something went wrong !!!`)
-        }
-        // teamplating 
-        //cl(xhr.status) // 200
-        //cl(xhr.statusText) // 200
-    }
-}
-getAllPosts();
+makeApiCall("GET", postsUrl);
 
 const onPostUpdate = () => {
-    let updatedObj = {
+    let updatedPostObj = {
         title: titleControl.value,
         body: bodyControl.value,
         userId: userIdControl.value
     }
-    cl(updatedObj)
-    let getEditId = localStorage.getItem("editId");
-    cl(getEditId)
-    let updateUrl = `${baseUrl}/posts/${getEditId}` // for updating obj in DB
-    let xhr = new XMLHttpRequest();
-    xhr.open("PATCH", updateUrl, true);
-
-    xhr.send(JSON.stringify(updatedObj));
-
-    xhr.onload = function () {
-        if (xhr.status === 200) {
-            cl(xhr.response)
-            let getIndexOfObj = postsArray.findIndex(post => {
-                return post.id == getEditId
-            })
-
-            cl(getIndexOfObj);
-
-            postsArray[getIndexOfObj].title = updatedObj.title;
-            postsArray[getIndexOfObj].body = updatedObj.body;
-            postsArray[getIndexOfObj].userId = updatedObj.userId;
-
-            templating(postsArray);
-        }
-
-        postForm.reset()
-    }
+    cl(updatedPostObj)
+    let updateId = localStorage.getItem("getEditId");
+    let updateUrl = `${baseUrl}/posts/${updateId}`;
+    makeApiCall("PUT", updateUrl, updatedPostObj);
 }
 
-
-postForm.addEventListener("submit", onSubmitPost);
 updateBtn.addEventListener("click", onPostUpdate)
 
+
+
+// makeApiCall("GET", `https://jsonplaceholder.typicode.com/todos`);
+
+// xhr.readyState  0 to 4
+
+// 0 >> XHR Object is created but open method is not called yet
+// 1 >> Open method is called
+// 2 >> send method is called
+// 3 >> server is working on your request
+// 4 >> the API call is completed (It may be success(data) or it may be fail(error))
