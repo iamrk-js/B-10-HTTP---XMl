@@ -95,7 +95,7 @@ const createCards = (postObj) => {
     cl(card)
 }
 
-const makeApiCall = (methodName, apiUrl) => {
+const makeApiCall = (methodName, apiUrl, bodyMsg = null) => {
     let xhr = new XMLHttpRequest();
     // xhr.open("GET", postsUrl);
     xhr.open(methodName, apiUrl);
