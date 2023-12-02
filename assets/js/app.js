@@ -17,6 +17,27 @@ let postsArray = [];
 // GET  >> READ
 // PUT/PATCH >> UPDATE
 // DELETE  >> DELETE
+
+
+const onEdit = (ele) => {
+    // cl(ele.closest(".card").id)
+    let getEditId = ele.closest(".card").id;
+    cl(getEditId)
+    localStorage.setItem("getEditId", getEditId);
+    let editUrl = `${baseUrl}/posts/${getEditId}`;
+
+    makeApiCall("GET", editUrl);
+}
+
+
+const onDelete = (ele) => {
+    cl(ele)
+    let deleteId = ele.closest(".card").id;
+    let deleteUrl = `${baseUrl}/posts/${deleteId}`;
+
+    makeApiCall("DELETE", deleteUrl)
+}
+
 const templatingOfPosts = (arr) => {
     let result = ``;
     arr.forEach(post => {
@@ -78,20 +99,64 @@ const makeApiCall = (methodName, apiUrl) => {
     let xhr = new XMLHttpRequest();
     // xhr.open("GET", postsUrl);
     xhr.open(methodName, apiUrl);
-    xhr.send();
+    xhr.send(JSON.stringify(bodyMsg)); //  we send data to DB
     xhr.onload = function () {
         if (xhr.status >= 200 || xhr.status <= 299 && xhr.readyState === 4) { // 2xx
             cl(xhr.response)
             // templating
-            if(methodName === "GET"){
+            if (methodName === "GET") {
+                // here data may be Array or it may be Object
                 let data = JSON.parse(xhr.response);
-                templatingOfPosts(data);
+                if (Array.isArray(data)) {
+                    templatingOfPosts(data);
+                } else {
+                    // we will patch data in form
+                    // cl(data)
+                    updateBtn.classList.remove('d-none');
+                    submitBtn.classList.add('d-none');
+                    titleControl.value = data.title;
+                    bodyControl.value = data.body;
+                    userIdControl.value = data.userId;
+                }
+            }else if(methodName === "PUT"){
+                cl(xhr.response)
+                let id = JSON.parse(xhr.response).id;
+                let card = document.getElementById(id);
+                cl(card)
+                let cardChild = [...card.children]
+                cardChild[0].innerHTML = `<h2>${bodyMsg.title}</h2>`
+                cardChild[1].innerHTML = `<p>${bodyMsg.body}</p>`
+                // cl(cardChild[0])
+                // cl(cardChild[1])
+                postForm.reset();
+                updateBtn.classList.add('d-none');
+                submitBtn.classList.remove('d-none');
+            }else if(methodName === "DELETE"){
+                let getIndex = apiUrl.indexOf('posts/')
+                let id = apiUrl.slice(getIndex + 6);
+                cl(id)
+                document.getElementById(id).remove()
             }
         }
-    }
-}
+    }}
 
 makeApiCall("GET", postsUrl);
+
+const onPostUpdate = () => {
+    let updatedPostObj = {
+        title: titleControl.value,
+        body: bodyControl.value,
+        userId: userIdControl.value
+    }
+    cl(updatedPostObj)
+    let updateId = localStorage.getItem("getEditId");
+    let updateUrl = `${baseUrl}/posts/${updateId}`;
+    makeApiCall("PUT", updateUrl, updatedPostObj);
+}
+
+updateBtn.addEventListener("click", onPostUpdate)
+
+
 
 // makeApiCall("GET", `https://jsonplaceholder.typicode.com/todos`);
 
